@@ -225,6 +225,45 @@ class KeyboardProfile(CommandProfile):
         return self.command
 
 
+class MujocoKeyboardProfile(CommandProfile):
+    def __init__(self, dt, viewer, x_scale=1.0, y_scale=1.0, yaw_scale=1.0):
+        super().__init__(dt)
+        from mujoco.glfw import glfw
+        self.glfw = glfw
+        self.viewer = viewer
+        self.x_scale = x_scale
+        self.y_scale = y_scale
+        self.yaw_scale = yaw_scale
+
+        self.keyb_command = [0, 0, 0]
+        self.command = [0, 0, 0]
+
+        self.window = getattr(viewer, "window", None)
+        if self.window is None and hasattr(viewer, "_window"):
+            self.window = viewer._window
+        if self.window is None:
+            raise ValueError("mujoco viewer window not available for keyboard input")
+
+        self.glfw.set_key_callback(self.window, self._key_callback)
+
+    def _key_callback(self, window, key, scancode, action, mods):
+        is_down = action != self.glfw.RELEASE
+        if key == self.glfw.KEY_UP:
+            self.keyb_command[0] = 1.0 if is_down else 0.0
+        if key == self.glfw.KEY_DOWN:
+            self.keyb_command[0] = -1.0 if is_down else 0.0
+        if key == self.glfw.KEY_LEFT:
+            self.keyb_command[1] = 1.0 if is_down else 0.0
+        if key == self.glfw.KEY_RIGHT:
+            self.keyb_command[1] = -1.0 if is_down else 0.0
+
+    def get_command(self, t, probe=False):
+        self.command[0] = self.keyb_command[0] * self.x_scale
+        self.command[1] = 0.0 * self.y_scale
+        self.command[2] = self.keyb_command[1] * self.yaw_scale
+        return self.command, False
+
+
 if __name__ == "__main__":
     cmdprof = ConstantAccelerationProfile(dt=0.2, max_speed=4, accel_time=3)
     print(cmdprof.commands)
